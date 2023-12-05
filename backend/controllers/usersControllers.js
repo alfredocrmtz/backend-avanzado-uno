@@ -32,27 +32,30 @@ const registerUser = asyncHandler(async (req, res) => {
 
 const loginUser = asyncHandler(async (req, res) => {
     const { email, password } = req.body
-    if (!email || !password) {
+
+    const user = await User.findOne({ email })
+
+    //verificamos al usuario y a la contraseña
+    if (user && (await bcrypt.compare(password, user.password))) {
+        res.status(200).json({
+            _id: user.id,
+            name: user.name,
+            email: user.email,
+            token: getToken(user.id)
+        })
+    } else {
         res.status(400)
-        throw new Error("Pleas enter user and password")
+        throw new Error('Credenciales incorrectas')
     }
-
-    const salt = await bcrypt.genSalt(10)
-    const hashPassword = await bcrypt.hash(password)
-
-    const user = await User.findOne({ email, password: hashPassword })
-
-    if (!user) {
-        res.status(400)
-        throw new Error("User or password is wrong")
-    }
-
-    res.status(201).json(user)
 })
 
 const ownerData = asyncHandler(async (req, res) => {
-
+    res.status(200).json(req.user)
 })
+
+const getToken = (id) => {
+    return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '30m' })
+}
 
 module.exports = {
     registerUser,
